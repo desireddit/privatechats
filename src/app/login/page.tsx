@@ -3,6 +3,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { createUser, signInUser } from "../actions"; // We will create this file next
+import { createUser } from "../actions";
 
 export default function LoginPage() {
   const { toast } = useToast();
@@ -46,36 +47,31 @@ export default function LoginPage() {
         title: "Account Created!",
         description: "Please log in with your new credentials.",
       });
-      // Optionally switch to the login tab
     }
     setLoading(false);
   };
 
   const handleSignIn = async () => {
     setLoading(true);
-    const result = await signInUser({
-      redditUsername: loginRedditUsername,
-      password: loginPassword,
-    });
-
-    if (result.error) {
+    // Note: Actual sign-in logic will be implemented next using the client-side SDK.
+    // This is the placeholder to connect the UI.
+    try {
+      // We will add Firebase client-side signInWithEmailAndPassword here.
+      console.log("Signing in with:", loginRedditUsername, loginPassword);
+      toast({
+        title: "Login Successful",
+        description: "Redirecting to your dashboard...",
+      });
+      window.location.href = '/dashboard';
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Sign In Failed",
-        description: result.error,
+        description: error.message,
       });
-    } else {
-      // On successful login, Next.js will automatically redirect
-      // to the dashboard if you set up middleware (we'll do this later).
-      // For now, you can manually redirect if needed.
-      window.location.href = '/dashboard';
     }
     setLoading(false);
   };
-
-  // in src/app/login/page.tsx
-
-// ... (keep all the state and handlers the same)
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -86,13 +82,14 @@ export default function LoginPage() {
           </h1>
           <p className="text-muted-foreground mt-2">
             Enter the shadows. Your private world awaits.
-          p>
+          </p>
         </div>
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
+          
           {/* LOGIN TAB */}
           <TabsContent value="login">
             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
@@ -125,13 +122,17 @@ export default function LoginPage() {
                   />
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col items-start gap-4">
                 <Button onClick={handleSignIn} disabled={loading} className="w-full">
                   {loading ? "Signing In..." : "Sign In"}
                 </Button>
+                <Link href="/admin/login" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                  Login as Admin
+                </Link>
               </CardFooter>
             </Card>
           </TabsContent>
+
           {/* SIGNUP TAB */}
           <TabsContent value="signup">
             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
@@ -147,7 +148,7 @@ export default function LoginPage() {
                   <Input
                     id="signup-name"
                     value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
+                    onChange={(e) => setSignupName(e.g.et.value)}
                     required
                     className="bg-input/50"
                   />
@@ -185,3 +186,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
