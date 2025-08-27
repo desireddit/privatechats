@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { doc, getDoc } from 'firebase/firestore';
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage';
 import { db } from '@/lib/firebase';
-import { HttpError } from '@/lib/errors'; // Import from our new shared file
+import { HttpError } from '@/lib/errors';
 
 // Schemas
 const GenerateSignedContentUrlInputSchema = z.object({
@@ -40,7 +40,7 @@ const generateSignedContentUrlFlow = ai.defineFlow(
       const adminUserDoc = await getDoc(doc(db, 'users', auth.uid));
       const isAdmin = adminUserDoc.data()?.email === 'desireddit4us@private.local';
       if (isAdmin) return;
-      
+
       const contentDocRef = doc(db, 'content', contentId);
       const contentDocSnap = await getDoc(contentDocRef);
       if (!contentDocSnap.exists()) {

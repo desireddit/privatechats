@@ -1,4 +1,4 @@
-"use client";
+// src/app/dashboard/content/[id]/page.tsx
 
 "use client";
 
@@ -12,11 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { generateDynamicWatermark } from '@/ai/flows/dynamic-watermarking';
 import { generateSignedContentUrl } from '@/ai/flows/generate-signed-content-url';
-import { HttpError } from '@/lib/errors'; // Import from our new shared fileimport { HttpError } from '@/lib/errors'; // ✅ Import from our new shared file
+import { HttpError } from '@/lib/errors';
 import { Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
 
-// ... (the rest of your page.tsx file remains the same)
-// The only change is the import statement for HttpError
 interface ContentItem {
   id: string;
   title: string;
@@ -25,7 +23,6 @@ interface ContentItem {
   mediaType: string;
 }
 
-// Helper function to fetch a resource and convert it to a data URI
 async function toDataURI(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
@@ -59,28 +56,20 @@ export default function ContentViewPage() {
       setLoading(true);
       setError(null);
       try {
-        // 1. Generate a secure, signed URL for the media.
-        // This server action now handles all authorization and existence checks.
-        // If it fails, it will throw an HttpError which we catch below.
         const { signedUrl } = await generateSignedContentUrl({ contentId });
 
-        // 2. Fetch content metadata from Firestore (since auth succeeded)
         const docRef = doc(db, 'content', contentId);
         const docSnap = await getDoc(docRef);
 
-        // This check is good to have as a fallback, but the server action
-        // should have already caught non-existent content.
         if (!docSnap.exists()) {
-          throw new Error('Content not found.'); // Generic error is fine here
+          throw new Error('Content not found.');
         }
 
         const contentData = { id: docSnap.id, ...docSnap.data() } as ContentItem;
         setContent(contentData);
 
-        // 3. Convert media from signed URL to data URI for watermarking
         const mediaDataUri = await toDataURI(signedUrl);
 
-        // 4. Generate watermark
         const watermarkInput = {
           mediaDataUri: mediaDataUri,
           username: user.displayName || user.email || 'anonymous',
@@ -92,14 +81,12 @@ export default function ContentViewPage() {
       } catch (err: any) {
         console.error("Error processing content:", err);
         
-        // ✅ CORRECTED: Changed HttpsError to HttpError
         const isHttpError = err instanceof HttpError;
         const errorMessage = isHttpError ? err.message : (err.message || 'An unexpected error occurred.');
         const errorCode = isHttpError ? (err as HttpError).code : 'unknown';
 
         setError(errorMessage);
 
-        // Only show toast for non-permission/not-found errors
         if (errorCode !== 'permission-denied' && errorCode !== 'not-found') {
              toast({
               variant: 'destructive',
