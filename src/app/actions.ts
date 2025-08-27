@@ -7,9 +7,8 @@ import { collection, doc, getDocs, query, setDoc, where, FieldValue } from "fire
 import { getUserSession } from "@/lib/session"; // ✅ Import our new secure helper
 
 // --- USER CREATION & ADMIN LOGIN ---
-// (The createUser and signInAdmin functions remain the same)
-
 export async function createUser(params: { name: string; redditUsername: string; password: string; }) {
+  // ... function content remains the same
   const { name, redditUsername, password } = params;
 
   if (!name || !redditUsername || !password) {
@@ -54,6 +53,7 @@ export async function createUser(params: { name: string; redditUsername: string;
 }
 
 export async function signInAdmin(params: { username?: string; password?: string; }) {
+  // ... function content remains the same
   const { username, password } = params;
 
   const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "desireddit4us";
@@ -74,8 +74,8 @@ export async function signInAdmin(params: { username?: string; password?: string
 }
 
 // --- USER MANAGEMENT ---
-
 export async function getAllUsers() {
+  // ... function content remains the same
   try {
     const usersRef = collection(db, "users");
     const querySnapshot = await getDocs(usersRef);
@@ -97,7 +97,6 @@ export async function getAllUsers() {
 }
 
 // --- VERIFICATION ---
-
 // ✅ This function is now fully SECURE
 export async function generateVerificationId() {
   const session = await getUserSession();
