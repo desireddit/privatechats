@@ -1,67 +1,71 @@
-
 'use server';
-/**
- * @fileOverview Generates a secure, short-lived signed URL for a piece of private content.
- *
- * - generateSignedContentUrl - A function that generates a signed URL for a given content ID.
- * - GenerateSignedContentUrlInput - The input type for the generateSignedContentUrl function.
- * - GenerateSignedContentUrlOutput - The return type for the generateSignedContentUrl function.
- */
 
-import { HttpsError } from '@genkit-ai/next';
-import { z } from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'zod';
 import { doc, getDoc } from 'firebase/firestore';
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage';
 import { db } from '@/lib/firebase';
-import { HttpsError } from 'genkit/next';
 
+// ✅ Custom HttpError class (our own replacement for HttpsError)
+class HttpError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+    this.name = 'HttpError';
+  }
+}
+
+// ---------- Schemas ----------
 const GenerateSignedContentUrlInputSchema = z.object({
-  contentId: z.string().describe('The ID of the content to generate a URL for.'),
+  contentId: z.string(),
 });
 export type GenerateSignedContentUrlInput = z.infer<typeof GenerateSignedContentUrlInputSchema>;
 
 const GenerateSignedContentUrlOutputSchema = z.object({
-  signedUrl: z.string().describe('The short-lived signed URL for the content.'),
+  signedUrl: z.string(),
 });
 export type GenerateSignedContentUrlOutput = z.infer<typeof GenerateSignedContentUrlOutputSchema>;
 
-export async function generateSignedContentUrl(input: GenerateSignedContentUrlInput): Promise<GenerateSignedContentUrlOutput> {
+// ---------- Public Function ----------
+export async function generateSignedContentUrl(
+  input: GenerateSignedContentUrlInput
+): Promise<GenerateSignedContentUrlOutput> {
   return generateSignedContentUrlFlow(input);
 }
 
+// ---------- Flow ----------
 const generateSignedContentUrlFlow = ai.defineFlow(
   {
     name: 'generateSignedContentUrlFlow',
     inputSchema: GenerateSignedContentUrlInputSchema,
     outputSchema: GenerateSignedContentUrlOutputSchema,
-    auth: async (auth, { contentId }) => {
-        if (!auth) {
-            throw new HttpsError('unauthenticated', 'User must be logged in.');
-        }
-        
-        // Check for admin status (you would use custom claims in production)
-        const adminUserDoc = await getDoc(doc(db, 'users', auth.uid));
-        const isAdmin = adminUserDoc.data()?.email === 'desireddit4us@private.local';
-        if (isAdmin) {
-            return; // Admins can access all content
-        }
-        
-        // Check if user has access to the content
-        const contentDocRef = doc(db, 'content', contentId);
-        const contentDocSnap = await getDoc(contentDocRef);
-        if (!contentDocSnap.exists()) {
-            throw new HttpsError('not-found', 'Content not found.');
-        }
+    auth: async (auth: { uid: string } | null, { contentId }: { contentId: string }) => {
+      if (!auth) {
+        throw new HttpError('unauthenticated', 'User must be logged in.');
+      }
 
-        const allowedUsers = contentDocSnap.data().allowedUsers || {};
-        if (!allowedUsers[auth.uid]) {
-            throw new HttpsError('permission-denied', 'You do not have access to this content.');
-        }
-    }
+      // Admin check
+      const adminUserDoc = await getDoc(doc(db, 'users', auth.uid));
+      const isAdmin = adminUserDoc.data()?.email === 'desireddit4us@private.local';
+      if (isAdmin) return;
+
+      // User access check
+      const contentDocRef = doc(db, 'content', contentId);
+      const contentDocSnap = await getDoc(contentDocRef);
+      if (!contentDocSnap.exists()) {
+        throw new HttpError('not-found', 'Content not found.');
+      }
+
+      const allowedUsers = contentDocSnap.data().allowedUsers || {};
+      if (!allowedUsers[auth.uid]) {
+        throw new HttpError('permission-denied', 'You do not have access to this content.');
+      }
+    },
   },
-  async ({ contentId }) => {
+  async ({ contentId }: { contentId: string }) => {
     if (!contentId) {
-      throw new HttpsError('invalid-argument', 'Content ID is required.');
+      throw new HttpError('invalid-argument', 'Content ID is required.');
     }
 
     try {
@@ -69,27 +73,27 @@ const generateSignedContentUrlFlow = ai.defineFlow(
       const contentDocSnap = await getDoc(contentDocRef);
 
       if (!contentDocSnap.exists()) {
-        throw new HttpsError('not-found', 'Content not found.');
+        throw new HttpError('not-found', 'Content not found.');
       }
 
       const contentData = contentDocSnap.data();
       const mediaUrl = contentData.mediaUrl;
 
       if (!mediaUrl) {
-        throw new HttpsError('not-found', 'Media URL not found for this content.');
+        throw new HttpError('not-found', 'Media URL not found for this content.');
       }
-      
+
       const storage = getStorage();
       const gsReference = storageRef(storage, mediaUrl);
       const downloadUrl = await getDownloadURL(gsReference);
 
       return { signedUrl: downloadUrl };
     } catch (error: any) {
-      console.error("Error generating signed URL:", error);
-      if (error instanceof HttpsError) {
+      console.error('Error generating signed URL:', error);
+      if (error instanceof HttpError) {
         throw error;
       }
-      throw new HttpsError('internal', `Failed to generate signed URL: ${error.message}`);
+      throw new HttpError('internal', `Failed to generate signed URL: ${error.message}`);
     }
   }
 );
