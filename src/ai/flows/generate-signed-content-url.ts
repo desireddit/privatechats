@@ -8,7 +8,7 @@
  * - GenerateSignedContentUrlOutput - The return type for the generateSignedContentUrl function.
  */
 
-import { ai } from '@/ai/genkit';
+import { HttpsError } from '@genkit-ai/next';
 import { z } from 'genkit';
 import { doc, getDoc } from 'firebase/firestore';
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage';
