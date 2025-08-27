@@ -50,13 +50,52 @@ export default function AdminLoginPage() {
       });
       
       // Redirect to the main admin page after successful login
+      // In src/app/admin/login/page.tsx
+
+// ... inside the AdminLoginPage component ...
+
+  const handleAdminSignIn = async () => {
+    setLoading(true);
+    // This server action securely checks credentials and returns a custom token
+    const result = await signInAdmin({ username, password });
+
+    if (result.error || !result.token) {
+      toast({
+        variant: "destructive",
+        title: "Admin Login Failed",
+        description: result.error || "An unknown error occurred.",
+      });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Use the custom token from the server to sign in on the client
+      const auth = getAuth();
+      const userCredential = await signInWithCustomToken(auth, result.token);
+      
+      // Get the ID token from the now signed-in admin user
+      const idToken = await userCredential.user.getIdToken();
+      
+      // Send the token to our new API route to create the session cookie
+      await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+      });
+
+      toast({
+        title: "Admin Login Successful",
+        description: "Redirecting to the dashboard...",
+      });
+      
       router.push("/admin/users");
     } catch (error) {
       console.error("Firebase custom token sign-in error:", error);
       toast({
         variant: "destructive",
         title: "Firebase Error",
-        description: "Could not sign in with custom token.",
+        description: "Could not complete admin sign-in.",
       });
     } finally {
       setLoading(false);

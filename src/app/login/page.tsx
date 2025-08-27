@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { createUser } from "../actions";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 export default function LoginPage() {
   const { toast } = useToast();
@@ -91,6 +92,41 @@ export default function LoginPage() {
           </TabsList>
           
           {/* LOGIN TAB */}
+          const handleSignIn = async () => {
+    setLoading(true);
+    try {
+      const auth = getAuth();
+      // We use the "redditUsername@domain" trick we designed
+      const email = `${loginRedditUsername}@privatechats.local`;
+      
+      const userCredential = await signInWithEmailAndPassword(auth, email, loginPassword);
+      const user = userCredential.user;
+
+      // Get the ID token from the signed-in user
+      const idToken = await user.getIdToken();
+
+      // Send the token to our new API route to create the session cookie
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      toast({
+        title: "Login Successful",
+        description: "Redirecting to your dashboard...",
+      });
+      
+      window.location.href = '/dashboard'; // Redirect after session is created
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign In Failed",
+        description: error.message || "Invalid credentials. Please try again.",
+      });
+    }
+    setLoading(false);
+  };
           <TabsContent value="login">
             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
               <CardHeader>
