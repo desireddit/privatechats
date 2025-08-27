@@ -4,45 +4,32 @@
 @tailwind components;
 @tailwind utilities;
  
-@layer base {
-  :root {
-    --background: 224 71% 4%; /* Near-black midnight blue */
-    --foreground: 210 40% 98%;
+/* src/app/globals.css */
 
-    --card: 224 71% 8%; /* Slightly lighter card background */
-    --card-foreground: 210 40% 98%;
- 
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
- 
-    --primary: 262.1 83.3% 57.8%; /* Vibrant Purple */
-    --primary-foreground: 210 20% 98%;
- 
-    --secondary: 217 32% 17%;
-    --secondary-foreground: 210 40% 98%;
- 
-    --muted: 217 32% 17%;
-    --muted-foreground: 215 20% 65%;
- 
-    --accent: 180 93% 60%; /* Bright Cyan for accents */
-    --accent-foreground: 224 71% 4%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
+/* ... (keep the :root variables at the top) */
 
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-    --ring: 262.1 83.3% 57.8%;
- 
-    --radius: 0.5rem;
-  }
-}
- 
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    position: relative; /* Needed for the overlay */
+    background-image: url('/background.webp');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  /* This adds the dark, semi-transparent overlay */
+  body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: hsl(var(--background) / 0.8); /* 80% opaque overlay */
+    z-index: -1;
   }
 }
