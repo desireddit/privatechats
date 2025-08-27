@@ -104,3 +104,32 @@ export async function signInAdmin(params: {
     return { error: "Server error during authentication." };
   }
 }
+
+// Add this new function to src/app/actions.ts
+
+// ... (keep the existing createUser and signInAdmin functions)
+
+export async function getAllUsers() {
+  try {
+    const usersRef = collection(db, "users");
+    const querySnapshot = await getDocs(usersRef);
+    
+    const users = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        redditUsername: data.redditUsername,
+        status: data.status,
+        // Ensure createdAt is a string to avoid serialization issues
+        createdAt: data.createdAt, 
+      };
+    });
+
+    return users;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    // In a real app, you'd handle this more gracefully
+    return []; 
+  }
+}

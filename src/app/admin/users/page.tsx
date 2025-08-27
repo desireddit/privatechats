@@ -1,107 +1,79 @@
+// src/app/admin/users/page.tsx
 
-"use client";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { getAllUsers } from "@/app/actions"; // We will add this function next
 
-import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+// Define a type for our user data for type safety
+export type User = {
+  id: string;
+  name: string;
+  redditUsername: string;
+  status: "pending" | "verified" | "blocked";
+  createdAt: string;
+};
 
-interface UserProfile {
-    uid: string;
-    displayName: string;
-    email: string;
-    status: 'pending' | 'verified' | 'blocked';
-    uniqueId: string | null;
-}
+export default async function AdminUsersPage() {
+  const users: User[] = await getAllUsers();
 
-export default function AdminUsersPage() {
-    const [users, setUsers] = useState<UserProfile[]>([]);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
-
-    useEffect(() => {
-        const q = query(collection(db, 'users'));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const usersData: UserProfile[] = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                usersData.push({ uid: doc.id, ...data } as UserProfile);
-            });
-            setUsers(usersData);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
-
-    const getStatusBadgeVariant = (status: 'pending' | 'verified' | 'blocked') => {
-        switch (status) {
-            case 'verified':
-                return 'default';
-            case 'pending':
-                return 'secondary';
-            case 'blocked':
-                return 'destructive';
-            default:
-                return 'outline';
-        }
-    };
-
-    const handleManageUser = (userId: string) => {
-        router.push(`/admin/users/${userId}`);
-    };
-
-    return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Registered Users</CardTitle>
-                    <CardDescription>Manage user verification, status, and content access.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <p>Loading users...</p>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {users.map((user) => (
-                                    <TableRow key={user.uid}>
-                                        <TableCell>{user.displayName}</TableCell>
-                                        <TableCell>{user.email}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={getStatusBadgeVariant(user.status)}>
-                                                {user.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button 
-                                                size="sm" 
-                                                variant="outline"
-                                                onClick={() => handleManageUser(user.uid)}
-                                            >
-                                               Manage User
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>User Management</CardTitle>
+        <CardDescription>
+          A list of all users who have registered on the platform.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Display Name</TableHead>
+              <TableHead>Reddit Username</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Date Registered</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell>{user.redditUsername}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      user.status === "verified"
+                        ? "default"
+                        : user.status === "pending"
+                        ? "secondary"
+                        : "destructive"
+                    }
+                  >
+                    {user.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
 }
