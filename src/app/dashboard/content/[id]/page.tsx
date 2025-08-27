@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { generateDynamicWatermark } from '@/ai/flows/dynamic-watermarking';
 import { generateSignedContentUrl } from '@/ai/flows/generate-signed-content-url';
-import { HttpError } from '@/lib/errors'; // ✅ Import from our new shared file
+import { HttpError } from '@/lib/errors'; // Import from our new shared fileimport { HttpError } from '@/lib/errors'; // ✅ Import from our new shared file
 import { Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
 
 // ... (the rest of your page.tsx file remains the same)

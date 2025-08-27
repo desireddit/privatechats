@@ -1,3 +1,5 @@
+// src/ai/flows/generate-signed-content-url.ts
+
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -5,11 +7,9 @@ import { z } from 'zod';
 import { doc, getDoc } from 'firebase/firestore';
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage';
 import { db } from '@/lib/firebase';
-import { HttpError } from '@/lib/errors'; // ✅ Import from our new shared file
+import { HttpError } from '@/lib/errors'; // Import from our new shared file
 
-// ❌ The HttpError class definition has been removed from this file.
-
-// ---------- Schemas ----------
+// Schemas
 const GenerateSignedContentUrlInputSchema = z.object({
   contentId: z.string(),
 });
@@ -20,14 +20,14 @@ const GenerateSignedContentUrlOutputSchema = z.object({
 });
 export type GenerateSignedContentUrlOutput = z.infer<typeof GenerateSignedContentUrlOutputSchema>;
 
-// ---------- Public Function ----------
+// Public Function
 export async function generateSignedContentUrl(
   input: GenerateSignedContentUrlInput
 ): Promise<GenerateSignedContentUrlOutput> {
   return generateSignedContentUrlFlow(input);
 }
 
-// ---------- Flow ----------
+// Flow
 const generateSignedContentUrlFlow = ai.defineFlow(
   {
     name: 'generateSignedContentUrlFlow',
@@ -37,19 +37,15 @@ const generateSignedContentUrlFlow = ai.defineFlow(
       if (!auth) {
         throw new HttpError('unauthenticated', 'User must be logged in.');
       }
-
-      // Admin check
       const adminUserDoc = await getDoc(doc(db, 'users', auth.uid));
       const isAdmin = adminUserDoc.data()?.email === 'desireddit4us@private.local';
       if (isAdmin) return;
-
-      // User access check
+      
       const contentDocRef = doc(db, 'content', contentId);
       const contentDocSnap = await getDoc(contentDocRef);
       if (!contentDocSnap.exists()) {
         throw new HttpError('not-found', 'Content not found.');
       }
-
       const allowedUsers = contentDocSnap.data().allowedUsers || {};
       if (!allowedUsers[auth.uid]) {
         throw new HttpError('permission-denied', 'You do not have access to this content.');
@@ -60,26 +56,20 @@ const generateSignedContentUrlFlow = ai.defineFlow(
     if (!contentId) {
       throw new HttpError('invalid-argument', 'Content ID is required.');
     }
-
     try {
       const contentDocRef = doc(db, 'content', contentId);
       const contentDocSnap = await getDoc(contentDocRef);
-
       if (!contentDocSnap.exists()) {
         throw new HttpError('not-found', 'Content not found.');
       }
-
       const contentData = contentDocSnap.data();
       const mediaUrl = contentData.mediaUrl;
-
       if (!mediaUrl) {
         throw new HttpError('not-found', 'Media URL not found for this content.');
       }
-
       const storage = getStorage();
       const gsReference = storageRef(storage, mediaUrl);
       const downloadUrl = await getDownloadURL(gsReference);
-
       return { signedUrl: downloadUrl };
     } catch (error: any) {
       console.error('Error generating signed URL:', error);
