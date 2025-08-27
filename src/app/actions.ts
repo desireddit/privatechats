@@ -73,3 +73,34 @@ export async function signInUser(params: {
   console.log("Attempting to sign in user:", params.redditUsername);
   return { success: true };
 }
+
+// Add this new function to src/app/actions.ts
+
+// ... (keep the existing createUser function)
+
+export async function signInAdmin(params: {
+  username?: string;
+  password?: string;
+}) {
+  const { username, password } = params;
+
+  // These credentials should be stored as environment variables for better security
+  const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "desireddit4us";
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Venky@1322Private";
+
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    return { error: "Invalid username or password." };
+  }
+
+  try {
+    // If credentials are correct, create a custom token with an "admin" claim.
+    // This is a secure way to grant admin privileges.
+    const adminUID = "admin_user_main"; // A static UID for the admin user
+    const customToken = await auth.createCustomToken(adminUID, { admin: true });
+
+    return { token: customToken };
+  } catch (error: any) {
+    console.error("Error creating admin custom token:", error);
+    return { error: "Server error during authentication." };
+  }
+}
