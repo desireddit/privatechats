@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       secure: true,
     };
 
-    // Set cookie in the browser.
+    // Set the secure, httpOnly cookie in the browser.
     cookies().set(options);
 
     return NextResponse.json({ success: true }, { status: 200 });
