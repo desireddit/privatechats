@@ -7,7 +7,8 @@ import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { db } from '@/lib/firebase';
 
 // ✅ Custom HttpError class (our own replacement for HttpsError)
-class HttpError extends Error {
+// Added the "export" keyword here
+export class HttpError extends Error {
   code: string;
   constructor(code: string, message: string) {
     super(message);

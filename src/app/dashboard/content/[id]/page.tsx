@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -10,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { generateDynamicWatermark } from '@/ai/flows/dynamic-watermarking';
-import { generateSignedContentUrl } from '@/ai/flows/generate-signed-content-url';
+// Make sure HttpError is imported correctly
+import { generateSignedContentUrl, HttpError } from '@/ai/flows/generate-signed-content-url';
 import { Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
-import { HttpsError } from 'genkit/next';
 
 interface ContentItem {
   id: string;
@@ -56,20 +55,19 @@ export default function ContentViewPage() {
       setLoading(true);
       setError(null);
       try {
-        // 1. Generate a secure, signed URL for the media
-        // This flow now contains the authorization logic.
+        // 1. Generate a secure, signed URL for the media.
+        // This server action now handles all authorization and existence checks.
+        // If it fails, it will throw an HttpError which we catch below.
         const { signedUrl } = await generateSignedContentUrl({ contentId });
 
-        if (!signedUrl) {
-          throw new Error('Could not retrieve secure URL for content.');
-        }
-        
-        // 2. Fetch content metadata from Firestore
+        // 2. Fetch content metadata from Firestore (since auth succeeded)
         const docRef = doc(db, 'content', contentId);
         const docSnap = await getDoc(docRef);
 
+        // This check is good to have as a fallback, but the server action
+        // should have already caught non-existent content.
         if (!docSnap.exists()) {
-          throw new HttpsError('not-found', 'Content not found.');
+          throw new Error('Content not found.'); // Generic error is fine here
         }
 
         const contentData = { id: docSnap.id, ...docSnap.data() } as ContentItem;
@@ -85,15 +83,20 @@ export default function ContentViewPage() {
           timestamp: new Date().toISOString(),
         };
         const watermarkOutput = await generateDynamicWatermark(watermarkInput);
-
         setWatermarkedMedia(watermarkOutput.watermarkedMediaDataUri);
 
       } catch (err: any) {
         console.error("Error processing content:", err);
-        const errorMessage = (err instanceof HttpsError) ? err.message : (err.message || 'An unexpected error occurred.');
+        
+        // ✅ CORRECTED: Changed HttpsError to HttpError
+        const isHttpError = err instanceof HttpError;
+        const errorMessage = isHttpError ? err.message : (err.message || 'An unexpected error occurred.');
+        const errorCode = isHttpError ? (err as HttpError).code : 'unknown';
+
         setError(errorMessage);
-        // Only show toast for non-permission errors
-        if (!errorMessage.includes('permission-denied') && !errorMessage.includes('not-found')) {
+
+        // Only show toast for non-permission/not-found errors
+        if (errorCode !== 'permission-denied' && errorCode !== 'not-found') {
              toast({
               variant: 'destructive',
               title: 'Error Loading Content',
@@ -110,12 +113,10 @@ export default function ContentViewPage() {
 
   const renderMedia = () => {
     if (!content) return null;
-    // Always use the watermarked media if available
     const mediaSrc = watermarkedMedia;
 
     if (!mediaSrc) {
-        // Fallback or error state if watermarked media fails
-        return <p>Could not load media.</p>;
+      return <p>Could not load media.</p>;
     }
 
     if (content.mediaType.startsWith('image/')) {
@@ -133,8 +134,7 @@ export default function ContentViewPage() {
   
   const renderError = () => {
     if (!error) return null;
-
-    const isPermissionError = error.includes('permission-denied') || error.includes('not-found');
+    const isPermissionError = error.toLowerCase().includes('permission') || error.toLowerCase().includes('not found');
 
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center text-destructive">
@@ -143,7 +143,7 @@ export default function ContentViewPage() {
             <ShieldAlert className="h-12 w-12 mb-4" />
             <h2 className="text-2xl font-bold">Access Denied</h2>
             <p className="text-muted-foreground mt-2">
-              You do not have permission to view this content. Please contact the administrator to request access.
+              You do not have permission to view this content, or it does not exist.
             </p>
             <Button onClick={() => router.push('/dashboard/content')} className="mt-6">Back to Content</Button>
           </>
@@ -156,7 +156,6 @@ export default function ContentViewPage() {
       </div>
     );
   };
-
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-6">
