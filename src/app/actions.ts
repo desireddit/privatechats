@@ -4,7 +4,48 @@
 
 import { auth, db } from "@/lib/firebase-admin"; // We'll create this admin file next
 import { collection, doc, getDocs, query, setDoc, where } from "firebase/firestore";
+// Add this new function to src/app/actions.ts
+import { cookies } from 'next/headers';
+import { getDoc } from "firebase/firestore";
 
+// ... (keep the other functions: createUser, signInAdmin, getAllUsers)
+
+export async function generateVerificationId() {
+  try {
+    const sessionCookie = cookies().get('__session')?.value || '';
+    if (!sessionCookie) {
+      return { error: "You must be logged in to perform this action." };
+    }
+    
+    // Verify the session cookie to get the user's UID
+    const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
+    const uid = decodedToken.uid;
+    
+    // Generate a simple, readable unique ID
+    const uniqueId = `ID-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+    // Update the user's document in Firestore
+    const userDocRef = doc(db, "users", uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      return { error: "User profile not found." };
+    }
+
+    await setDoc(userDocRef, { uniqueId: uniqueId }, { merge: true });
+
+    // In a real app, you might also create a notification for the admin here.
+
+    return { uniqueId: uniqueId };
+
+  } catch (error: any) {
+    console.error("Error generating verification ID:", error);
+    if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/invalid-session-cookie') {
+        return { error: "Your session has expired. Please log in again." };
+    }
+    return { error: "A server error occurred. Please try again later." };
+  }
+}
 // This function creates a new user in Firebase Auth and a corresponding user document in Firestore.
 export async function createUser(params: {
   name: string;
