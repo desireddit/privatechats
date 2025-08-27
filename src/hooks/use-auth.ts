@@ -2,57 +2,50 @@
 
 "use client";
 
-import { useEffect, useState, createContext, useContext } from 'react';
+import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase'; // Assumes you have a client-side firebase config
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
-// Define the shape of our extended user object
-interface User extends FirebaseUser {
-  status?: 'pending' | 'verified' | 'blocked';
+// This is the new, richer User type we'll use throughout the app
+export interface UserProfile {
+  uid: string;
   name?: string;
   redditUsername?: string;
+  status?: 'pending' | 'verified' | 'blocked';
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: FirebaseUser | null; // The basic user from Firebase Auth
+  userProfile: UserProfile | null; // The detailed profile from Firestore
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
+const AuthContext = createContext<AuthContextType>({ user: null, userProfile: null, loading: true });
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
       if (firebaseUser) {
-        // User is signed in, now get their profile from Firestore
+        // If user is logged in, listen for real-time changes to their profile
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        
-        // Use onSnapshot for real-time updates to user status
         const unsubFirestore = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            const userData = docSnap.data();
-            setUser({
-              ...firebaseUser,
-              status: userData.status,
-              name: userData.name,
-              redditUsername: userData.redditUsername,
-            });
+            setUserProfile({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
           } else {
-            // Firestore doc doesn't exist, but user is authenticated.
-            // This might be a temporary state or an error.
-            setUser(firebaseUser);
+            setUserProfile(null);
           }
           setLoading(false);
         });
-
         return () => unsubFirestore(); // Cleanup Firestore listener
       } else {
         // User is signed out
-        setUser(null);
+        setUserProfile(null);
         setLoading(false);
       }
     });
@@ -61,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, userProfile, loading }}>
       {children}
     </AuthContext.Provider>
   );

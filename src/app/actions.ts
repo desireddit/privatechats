@@ -7,6 +7,20 @@ import { collection, doc, getDocs, query, setDoc, where } from "firebase/firesto
 // Add this new function to src/app/actions.ts
 import { cookies } from 'next/headers';
 import { getDoc } from "firebase/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { collection, doc, getDoc, getDocs, query, setDoc, where, FieldValue } from "firebase-admin/firestore";
+// NOTE: We need a secure way to get the current user's UID on the server.
+// We will implement this with session cookies in the next step.
+// For now, this is a placeholder to show the logic. We will replace this.
+async function getUserIdFromServer(): Promise<string | null> {
+    // This part is a placeholder. In the next step, we will replace this
+    // with a secure method using session cookies.
+    console.warn("getUserIdFromServer is a placeholder and not secure yet.");
+    // To make this testable, we'll temporarily return a hardcoded test user ID.
+    // Replace 'YOUR_TEST_USER_ID' with a UID from your Firebase Auth users.
+    const TEST_USER_ID = "YOUR_TEST_USER_ID"; // IMPORTANT: Replace this for testing.
+    return TEST_USER_ID;
+}
 
 // ... (keep the other functions: createUser, signInAdmin, getAllUsers)
 
@@ -172,5 +186,32 @@ export async function getAllUsers() {
     console.error("Error fetching users:", error);
     // In a real app, you'd handle this more gracefully
     return []; 
+  }
+}
+
+export async function generateVerificationId() {
+  const uid = await getUserIdFromServer(); // This will be replaced with a secure method
+  
+  if (!uid) {
+    return { error: "You must be logged in to perform this action." };
+  }
+
+  try {
+    // Generate a simple, readable unique ID
+    const uniqueId = `ID-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // Update the user's document in Firestore
+    const userDocRef = doc(db, "users", uid);
+    await setDoc(userDocRef, { 
+      uniqueId: uniqueId,
+      // We can also log when the ID was generated
+      uniqueIdCreatedAt: FieldValue.serverTimestamp(),
+     }, { merge: true });
+
+    // In a real app, you would also trigger a notification for the admin here.
+    return { uniqueId };
+  } catch (error) {
+    console.error("Error generating verification ID:", error);
+    return { error: "A server error occurred. Please try again." };
   }
 }

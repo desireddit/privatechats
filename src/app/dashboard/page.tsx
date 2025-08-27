@@ -1,145 +1,124 @@
-// src/app/dashboard/content/page.tsx
+// src/app/dashboard/page.tsx
 
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/hooks/use-auth';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, MoreHorizontal, FileText, AlertTriangle } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useState } from "react";
+import { useAuth, UserProfile } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Copy, Send } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { generateVerificationId } from "@/app/actions";
+import { Input } from "@/components/ui/input";
 
-interface ContentItem {
-  id: string;
-  title: string;
-  description: string;
-  mediaUrl?: string;
-  mediaType?: string;
+// Component for when the user's status is 'pending'
+function VerificationPending({ userProfile }: { userProfile: UserProfile }) {
+  const [uniqueId, setUniqueId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleGenerateId = async () => {
+    setLoading(true);
+    const result = await generateVerificationId();
+    if (result.error) {
+      toast({ variant: "destructive", title: "Error", description: result.error });
+    } else if (result.uniqueId) {
+      setUniqueId(result.uniqueId);
+      toast({ title: "Success!", description: "Your unique ID has been generated." });
+    }
+    setLoading(false);
+  };
+
+  const copyToClipboard = () => {
+    if (uniqueId) {
+      navigator.clipboard.writeText(uniqueId);
+      toast({ description: "Unique ID copied to clipboard!" });
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center h-full">
+      <Card className="w-full max-w-lg bg-card/80 backdrop-blur-sm border-border/50">
+        <CardHeader>
+          <CardTitle>Verification Required</CardTitle>
+          <CardDescription>
+            Welcome, {userProfile.name}! To begin chatting, please complete the verification process.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 text-center">
+          {!uniqueId ? (
+            <>
+              <p className="text-muted-foreground">
+                Click the button below to generate a unique ID. You will then need to send this ID to the admin on Reddit for approval.
+              </p>
+              <Button onClick={handleGenerateId} disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Generate My Unique ID
+              </Button>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                Your verification ID is ready. Please send this ID to <span className="font-bold text-primary">u/desireddit4us</span> on Reddit.
+              </p>
+              <div className="flex items-center justify-center gap-2 p-4 rounded-md bg-secondary">
+                <p className="text-2xl font-bold tracking-widest text-accent">{uniqueId}</p>
+                <Button variant="ghost" size="icon" onClick={copyToClipboard} aria-label="Copy ID">
+                  <Copy className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Once the admin approves your request, this page will unlock and you can begin chatting.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
-type WrapperProps = {
-  children: React.ReactNode;
-  [key: string]: any;
-} & (
-  | {
-      isAction: true;
-      onClick: () => void;
-      href?: never;
-    }
-  | {
-      isAction?: false;
-      href: string;
-      onClick?: never;
-    }
-);
-
-const CardItemWrapper = ({ isAction, href, children, ...props }: WrapperProps) => {
-  if (isAction || !href) {
-    return <div {...props}>{children}</div>;
-  }
+// Component for when the user's status is 'verified'
+function ChatInterface({ userProfile }: { userProfile: UserProfile }) {
+  // We will build the full chat UI here in a future step
   return (
-    <Link href={href} {...props}>
-      {children}
-    </Link>
-  );
-};
-
-export default function ContentListPage() {
-  const { user } = useAuth();
-  const [content, setContent] = useState<ContentItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchContent = async () => {
-      if (!user) return;
-      try {
-        const contentCollection = collection(db, 'content');
-        const contentSnapshot = await getDocs(contentCollection);
-        const contentList = contentSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as ContentItem[];
-        setContent(contentList);
-      } catch (error) {
-        console.error('Error fetching content:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchContent();
-  }, [user]);
-
-  return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Your Content</h1>
-        <Button asChild>
-          <Link href="/dashboard/content/new">
-            <PlusCircle className="mr-2 h-4 w-4" /> Create New
-          </Link>
-        </Button>
+    <div className="flex flex-col h-full max-w-3xl mx-auto">
+      <div className="flex-grow p-4 space-y-4 overflow-y-auto">
+        {/* Chat messages will go here */}
+        <div className="text-center text-muted-foreground text-sm">
+          You are now verified. You can start chatting with the admin.
+        </div>
       </div>
+      <div className="p-4 border-t border-border bg-card/80 backdrop-blur-sm">
+        <div className="relative">
+          <Input placeholder="Type your message..." className="pr-12 bg-input/50" />
+          <Button size="icon" className="absolute top-1/2 right-2 -translate-y-1/2">
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full mt-2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-32 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+export default function DashboardPage() {
+  const { userProfile, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-[80vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!userProfile) {
+    return <div className="flex items-center justify-center h-[80vh]"><p className="text-destructive">Could not load user profile. Please try logging in again.</p></div>;
+  }
+  
+  // Conditionally render the correct UI based on user's verification status
+  return (
+    <div className="h-full">
+      {userProfile.status === 'verified' ? (
+        <ChatInterface userProfile={userProfile} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {content.map((item) => {
-            const wrapperProps = item.mediaUrl
-              ? { href: `/dashboard/content/${item.id}` }
-              : { isAction: true as const, onClick: () => alert('No media available'), className: 'cursor-not-allowed opacity-50' };
-            
-            return (
-              <CardItemWrapper key={item.id} {...wrapperProps}>
-                <Card className="flex flex-col h-full hover:shadow-lg transition-shadow">
-                  <CardHeader className="flex-row items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
-                      <CardDescription className="line-clamp-2">{item.description}</CardDescription>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </CardHeader>
-                  <CardContent className="flex-grow flex items-center justify-center bg-muted/30">
-                    {item.mediaUrl ? (
-                      <FileText className="h-16 w-16 text-muted-foreground" />
-                    ) : (
-                      <div className="text-center text-muted-foreground">
-                        <AlertTriangle className="h-12 w-12 mx-auto mb-2" />
-                        <p className="text-sm">No Media</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </CardItemWrapper>
-            );
-          })}
-        </div>
+        <VerificationPending userProfile={userProfile} />
       )}
     </div>
   );
