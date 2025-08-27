@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
@@ -9,10 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { generateDynamicWatermark } from '@/ai/flows/dynamic-watermarking';
-// Make sure HttpError is imported correctly
-import { generateSignedContentUrl, HttpError } from '@/ai/flows/generate-signed-content-url';
+import { generateSignedContentUrl } from '@/ai/flows/generate-signed-content-url';
+import { HttpError } from '@/lib/errors'; // ✅ Import from our new shared file
 import { Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
 
+// ... (the rest of your page.tsx file remains the same)
+// The only change is the import statement for HttpError
 interface ContentItem {
   id: string;
   title: string;

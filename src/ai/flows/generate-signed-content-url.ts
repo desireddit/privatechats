@@ -5,17 +5,9 @@ import { z } from 'zod';
 import { doc, getDoc } from 'firebase/firestore';
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage';
 import { db } from '@/lib/firebase';
+import { HttpError } from '@/lib/errors'; // ✅ Import from our new shared file
 
-// ✅ Custom HttpError class (our own replacement for HttpsError)
-// Added the "export" keyword here
-export class HttpError extends Error {
-  code: string;
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-    this.name = 'HttpError';
-  }
-}
+// ❌ The HttpError class definition has been removed from this file.
 
 // ---------- Schemas ----------
 const GenerateSignedContentUrlInputSchema = z.object({
